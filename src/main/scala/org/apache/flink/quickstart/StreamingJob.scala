@@ -1,42 +1,23 @@
 package org.apache.flink.quickstart
 
 import org.apache.flink.Event.{KafkaProducerFailure, KafkaProducerSuccess}
-import org.apache.flink.EventParameters.EventParameterRule
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.{Event, EventParameters, OrganizationClosureDate}
-
-import java.time.LocalDate
 
 object StreamingJob {
 
   def main(args: Array[String]) {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-
     env.setParallelism(10)
 
-    val organizationClosureDateSource = new OrganizationClosureDate.KafkaConsumer
-    val organizationBroadcastDescriptor = new OrganizationClosureDate.BroadcastDescriptor
+    val organizationClosureDateStream = env.addSource(new OrganizationClosureDate.KafkaConsumer)
+    val organizationBroadcastStateDescriptor = new OrganizationClosureDate.BroadcastStateDescriptor
+    val organizationClosureDateBroadcastStream = organizationClosureDateStream.broadcast(organizationBroadcastStateDescriptor)
 
-    val value1 = env.fromCollection(List(
-      OrganizationClosureDate.DTO("1010", Some(LocalDate.now())),
-      OrganizationClosureDate.DTO("2020", Some(LocalDate.now())))
-    )
-    val organizationClosureDateStream = env
-      .addSource(organizationClosureDateSource)
-      .union(value1)
-    val organizationClosureDateBroadcastStream = organizationClosureDateStream.broadcast(organizationBroadcastDescriptor)
-
-    val eventParametersBroadcastDescriptor = new EventParameters.BroadcastDescriptor
-
-    val value2 = env.fromCollection(List(
-      EventParameters.DTO("1010", Seq(EventParameterRule("rafa"))),
-      EventParameters.DTO("2020", Seq(EventParameterRule("rafael"))))
-    )
-
+    val eventParametersBroadcastStateDescriptor = new EventParameters.BroadcastStateDescriptor
     val parametersBroadcastStream = env
       .addSource(new EventParameters.KafkaConsumer)
-      .union(value2)
-      .broadcast(eventParametersBroadcastDescriptor)
+      .broadcast(eventParametersBroadcastStateDescriptor)
 
     val outputTag = new OutputTag[Event.DTO]("eventsNotValidated")
 
@@ -44,10 +25,10 @@ object StreamingJob {
       .addSource(new Event.KafkaConsumer)
       .keyBy(value => value.organization)
       .connect(organizationClosureDateBroadcastStream)
-      .process(new EventOrganizationClosureDateBroadcastProcessFunction(organizationBroadcastDescriptor, outputTag))
+      .process(new EventOrganizationClosureDateBroadcastProcessFunction(organizationBroadcastStateDescriptor))
       .keyBy(value => value.organization)
       .connect(parametersBroadcastStream)
-      .process(new EventOrganizationParameterBroadcastProcessFunction(eventParametersBroadcastDescriptor))
+      .process(new EventOrganizationParameterBroadcastProcessFunction(eventParametersBroadcastStateDescriptor, outputTag))
       .keyBy(value => value.organization)
       .process(new EventValidationProcessFunction(outputTag))
 

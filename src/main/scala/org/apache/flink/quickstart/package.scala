@@ -53,7 +53,7 @@ package object OrganizationClosureDate {
 
   }
 
-  class BroadcastDescriptor extends MapStateDescriptor[String, DTO](
+  class BroadcastStateDescriptor extends MapStateDescriptor[String, DTO](
     "broadcastClosureDateDesc",
     BasicTypeInfo.STRING_TYPE_INFO,
     TypeInformation.of(new TypeHint[DTO] {}))
@@ -86,7 +86,7 @@ package object EventParameters {
 
   }
 
-  class BroadcastDescriptor extends MapStateDescriptor[String, DTO](
+  class BroadcastStateDescriptor extends MapStateDescriptor[String, DTO](
     "paramsBroadcastState",
     BasicTypeInfo.STRING_TYPE_INFO,
     TypeInformation.of(new TypeHint[DTO] {}))
@@ -142,10 +142,5 @@ package object Event {
     override def getTargetTopic(dto: DTO): String = topicId
 
   }
-
-  class BroadcastDescriptor extends MapStateDescriptor[String, DTO](
-    "paramsBroadcastState",
-    BasicTypeInfo.STRING_TYPE_INFO,
-    TypeInformation.of(new TypeHint[DTO] {}))
 
 }
